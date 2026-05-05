@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>ESP32-S3 Web Server</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>ESP32-S3 Web Server</h1>
+    <p class="muted">Tiny ESP32-S3 web server dashboard</p>
+
+    <section class="panel">
+      <h2>Device Info</h2>
+      <pre id="deviceInfo">Loading...</pre>
+    </section>
+
+    <section class="panel">
+      <h2>Hosted Files</h2>
+      <div id="fileList">Loading...</div>
+    </section>
+
+    <section class="panel">
+      <h2>Status RGB</h2>
+
+      <label>Color Picker</label>
+      <input id="colorPicker" type="color" value="#00ff00">
+
+      <label>Red: <span id="rVal">0</span></label>
+      <input id="r" type="range" min="0" max="255" value="0">
+
+      <label>Green: <span id="gVal">255</span></label>
+      <input id="g" type="range" min="0" max="255" value="255">
+
+      <label>Blue: <span id="bVal">0</span></label>
+      <input id="b" type="range" min="0" max="255" value="0">
+
+      <label>Brightness: <span id="brightnessVal">25</span></label>
+      <input id="brightness" type="range" min="0" max="255" value="25">
+
+      <div id="preview" class="preview"></div>
+
+      <div class="row">
+        <button onclick="preset(255,0,0)">Red</button>
+        <button onclick="preset(0,255,0)">Green</button>
+        <button onclick="preset(0,0,255)">Blue</button>
+        <button onclick="preset(255,255,255)">White</button>
+        <button onclick="preset(0,0,0)">Off</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Device Actions</h2>
+      <button class="danger" onclick="rebootDevice()">Reboot ESP32-S3</button>
+      <p id="actionStatus" class="muted"></p>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

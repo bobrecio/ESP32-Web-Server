@@ -1,0 +1,30 @@
+name: PlatformIO Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Create dummy secrets file
+        run: cp include/secrets.example.h include/secrets.h
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Build LittleFS image
+        run: pio run -t buildfs
