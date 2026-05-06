@@ -22,6 +22,13 @@ int greenVal = 255;
 int blueVal = 0;
 int brightnessVal = 25;
 
+void sendJson(JsonDocument &doc, int statusCode = 200)
+{
+  String response;
+  serializeJson(doc, response);
+  server.send(statusCode, "application/json", response);
+}
+
 String formatBytes(size_t bytes)
 {
   if (bytes < 1024)
@@ -116,16 +123,16 @@ void loadSettings()
 
 void handleSettings()
 {
-  String json = "{";
-  json += "\"deviceName\":\"" + deviceName + "\",";
-  json += "\"statusLedEnabled\":" + String(statusLedEnabled ? "true" : "false") + ",";
-  json += "\"r\":" + String(redVal) + ",";
-  json += "\"g\":" + String(greenVal) + ",";
-  json += "\"b\":" + String(blueVal) + ",";
-  json += "\"brightness\":" + String(brightnessVal);
-  json += "}";
+  StaticJsonDocument<256> doc;
 
-  server.send(200, "application/json", json);
+  doc["deviceName"] = deviceName;
+  doc["statusLedEnabled"] = statusLedEnabled;
+  doc["r"] = redVal;
+  doc["g"] = greenVal;
+  doc["b"] = blueVal;
+  doc["brightness"] = brightnessVal;
+
+  sendJson(doc);
 }
 
 void setRgb(int r, int g, int b, int brightness, bool persist = false)
@@ -176,6 +183,8 @@ void statusError()
 
 void handleColor()
 {
+  StaticJsonDocument<256> doc;
+
   int r = server.hasArg("r") ? server.arg("r").toInt() : redVal;
   int g = server.hasArg("g") ? server.arg("g").toInt() : greenVal;
   int b = server.hasArg("b") ? server.arg("b").toInt() : blueVal;
@@ -183,80 +192,74 @@ void handleColor()
 
   setRgb(r, g, b, brightness, true);
 
-  String json = "{";
-  json += "\"r\":" + String(redVal) + ",";
-  json += "\"g\":" + String(greenVal) + ",";
-  json += "\"b\":" + String(blueVal) + ",";
-  json += "\"brightness\":" + String(brightnessVal);
-  json += "}";
+  doc["r"] = redVal;
+  doc["g"] = greenVal;
+  doc["b"] = blueVal;
+  doc["brightness"] = brightnessVal;
 
-  server.send(200, "application/json", json);
+  sendJson(doc);
 }
 
 void handleStatus()
 {
-  String json = "{";
-  json += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
-  json += "\"r\":" + String(redVal) + ",";
-  json += "\"g\":" + String(greenVal) + ",";
-  json += "\"b\":" + String(blueVal) + ",";
-  json += "\"brightness\":" + String(brightnessVal) + ",";
-  json += "\"uptimeMs\":" + String(millis()) + ",";
-  json += "\"rssi\":" + String(WiFi.RSSI());
-  json += "}";
+  StaticJsonDocument<256> doc;
 
-  server.send(200, "application/json", json);
+  doc["ip"] = WiFi.localIP().toString();
+  doc["r"] = redVal;
+  doc["g"] = greenVal;
+  doc["b"] = blueVal;
+  doc["brightness"] = brightnessVal;
+  doc["uptimeMs"] = millis();
+  doc["rssi"] = WiFi.RSSI();
+
+  sendJson(doc);
 }
 
 void handleInfo()
 {
+  StaticJsonDocument<512> doc;
+
   size_t total = LittleFS.totalBytes();
   size_t used = LittleFS.usedBytes();
 
-  String json = "{";
-  json += "\"chipModel\":\"" + String(ESP.getChipModel()) + "\",";
-  json += "\"chipRevision\":" + String(ESP.getChipRevision()) + ",";
-  json += "\"cpuFreqMHz\":" + String(ESP.getCpuFreqMHz()) + ",";
-  json += "\"flashSize\":" + String(ESP.getFlashChipSize()) + ",";
-  json += "\"freeHeap\":" + String(ESP.getFreeHeap()) + ",";
-  json += "\"sketchSize\":" + String(ESP.getSketchSize()) + ",";
-  json += "\"freeSketchSpace\":" + String(ESP.getFreeSketchSpace()) + ",";
-  json += "\"littleFsTotal\":" + String(total) + ",";
-  json += "\"littleFsUsed\":" + String(used) + ",";
-  json += "\"littleFsFree\":" + String(total - used) + ",";
-  json += "\"uptimeMs\":" + String(millis()) + ",";
-  json += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
-  json += "\"mac\":\"" + WiFi.macAddress() + "\",";
-  json += "\"rssi\":" + String(WiFi.RSSI());
-  json += "}";
+  doc["chipModel"] = ESP.getChipModel();
+  doc["chipRevision"] = ESP.getChipRevision();
+  doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
+  doc["flashSize"] = ESP.getFlashChipSize();
+  doc["freeHeap"] = ESP.getFreeHeap();
+  doc["sketchSize"] = ESP.getSketchSize();
+  doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
+  doc["littleFsTotal"] = total;
+  doc["littleFsUsed"] = used;
+  doc["littleFsFree"] = total - used;
+  doc["uptimeMs"] = millis();
+  doc["ip"] = WiFi.localIP().toString();
+  doc["mac"] = WiFi.macAddress();
+  doc["rssi"] = WiFi.RSSI();
 
-  server.send(200, "application/json", json);
+  sendJson(doc);
 }
 
 void handleFiles()
 {
-  String json = "[";
+  StaticJsonDocument<1024> doc;
+  JsonArray files = doc.to<JsonArray>();
+
   File root = LittleFS.open("/");
   File file = root.openNextFile();
-  bool first = true;
 
   while (file)
   {
-    if (!first)
-      json += ",";
-    first = false;
+    JsonObject item = files.createNestedObject();
 
-    json += "{";
-    json += "\"name\":\"" + String(file.name()) + "\",";
-    json += "\"size\":" + String(file.size()) + ",";
-    json += "\"sizeFormatted\":\"" + formatBytes(file.size()) + "\"";
-    json += "}";
+    item["name"] = file.name();
+    item["size"] = file.size();
+    item["sizeFormatted"] = formatBytes(file.size());
 
     file = root.openNextFile();
   }
 
-  json += "]";
-  server.send(200, "application/json", json);
+  sendJson(doc);
 }
 
 void handleReboot()
@@ -286,6 +289,30 @@ void handleFileRequest()
   file.close();
 }
 
+void handleUpdateSettings()
+{
+  if (server.hasArg("deviceName"))
+  {
+    deviceName = server.arg("deviceName");
+  }
+
+  if (server.hasArg("statusLedEnabled"))
+  {
+    String value = server.arg("statusLedEnabled");
+    statusLedEnabled = value == "true" || value == "1" || value == "on";
+  }
+
+  saveSettings();
+  statusReady();
+
+  StaticJsonDocument<256> doc;
+  doc["message"] = "Settings updated";
+  doc["deviceName"] = deviceName;
+  doc["statusLedEnabled"] = statusLedEnabled;
+
+  sendJson(doc);
+}
+
 void setup()
 {
   delay(1000);
@@ -308,6 +335,7 @@ void setup()
   else
   {
     Serial.println("LittleFS mounted");
+    loadSettings();
   }
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -328,7 +356,8 @@ void setup()
   server.on("/api/info", handleInfo);
   server.on("/api/files", handleFiles);
   server.on("/api/reboot", handleReboot);
-  server.on("/api/settings", handleSettings);
+  server.on("/api/settings", HTTP_GET, handleSettings);
+  server.on("/api/settings", HTTP_POST, handleUpdateSettings);
   server.onNotFound(handleFileRequest);
 
   server.begin();
